@@ -270,78 +270,103 @@
         }
 
         // 單一按鍵核心控制邏輯
-        function handleOrderStep(orderId) {
-            let orders = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-            const index = orders.findIndex(o => o.id === orderId);
+        // 修正後台核心控制邏輯：確保第三階段結算封存時，點數不會遺失
+function handleOrderStep(orderId) {
+    let orders = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    const index = orders.findIndex(o => o.id === orderId);
+    
+    if (index === -1) return;
+
+    let currentStatus = orders[index].status || '待處理';
+
+    if (currentStatus === "待處理") {
+        orders[index].status = "製作中";
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+        renderOrders();
+    } else if (currentStatus === "製作中") {
+        orders[index].status = "請取餐";
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+        renderOrders();
+    } else if (currentStatus === "請取餐") {
+        // 🎯 第三階段點擊：這就是你說的「完成訂單/從畫面刪除」
+        if (confirm(`確認單號 #${orderId} 顧客已完成取餐，要封存並刪除此卡片嗎？`)) {
+            let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+            let finishedOrder = orders[index];
             
-            if (index === -1) return;
-
-            let currentStatus = orders[index].status || '待處理';
-
-            if (currentStatus === "待處理") {
-                orders[index].status = "製作中";
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
-                renderOrders();
-            } else if (currentStatus === "製作中") {
-                orders[index].status = "請取餐";
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
-                renderOrders();
-            } else if (currentStatus === "請取餐") {
-                // 第三階段點擊：直接結算、封存，並從畫面上刪除
-                if (confirm(`確認單號 #${orderId} 顧客已完成取餐，要封存並刪除此卡片嗎？`)) {
-                    let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-                    let finishedOrder = orders[index];
-                    
-                    finishedOrder.status = 'completed';
-                    history.push(finishedOrder);
-                    
-                    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-                    
-                    // 從進行中佇列刪除
-                    orders = orders.filter(o => o.id !== orderId);
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
-                    
-                    renderOrders();
-                    renderMembers();
-                    triggerAggregation();
-                }
-            }
+            // 🔥【核心修正】打包送進歷史紀錄時，必須完整保留前台傳來的點數與小計欄位
+            let cleanOrderForHistory = {
+                id: finishedOrder.id,
+                name: finishedOrder.name,
+                phone: finishedOrder.phone,
+                items: finishedOrder.items,
+                subtotal: finishedOrder.subtotal || finishedOrder.total || 0, // 保留原始小計以利後續計算
+                discountUsed: finishedOrder.discountUsed || 0,
+                pointsDeducted: finishedOrder.pointsDeducted || 0,           // 關鍵：將扣除點數永久寫入歷史紀錄
+                total: finishedOrder.total,
+                time: finishedOrder.time,
+                status: 'completed' // 標記為已完結
+            };
+            
+            history.push(cleanOrderForHistory);
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+            
+            // 從進行中佇列（畫面上）刪除
+            orders = orders.filter(o => o.id !== orderId);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+            
+            // 刷新後台所有版面
+            renderOrders();
+            renderMembers();
+            triggerAggregation();
         }
+    }
+}
 
         // 2. 渲染會員控制面板
         function renderMembers() {
-            const members = JSON.parse(localStorage.getItem(MEMBER_KEY) || '[]');
-            const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-            const activeOrders = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-            const tbody = document.getElementById('admin-member-list');
+    const members = JSON.parse(localStorage.getItem(MEMBER_KEY) || '[]');
+    const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    const activeOrders = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    const tbody = document.getElementById('admin-member-list');
 
-            if (members.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#999;">目前尚無註冊會員資料</td></tr>';
-                return;
-            }
+    if (members.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#999;">目前尚無註冊會員資料</td></tr>';
+        return;
+    }
 
-            const allOrders = [...history, ...activeOrders];
+    const allOrders = [...history, ...activeOrders];
 
-            tbody.innerHTML = members.map(member => {
-                const memberOrders = allOrders.filter(o => o.phone === member.phone);
-                const orderCount = memberOrders.length;
-                const totalSpent = memberOrders.reduce((sum, o) => sum + Number(o.total || 0), 0);
-                const points = Math.floor(totalSpent / 50);
+    tbody.innerHTML = members.map(member => {
+        // 過濾該會員的所有訂單
+        const memberOrders = allOrders.filter(o => String(o.phone).trim() === String(member.phone).trim());
+        const orderCount = memberOrders.length;
+        
+        // 🔥【後台核心修正】點數計算邏輯與前台完全同步
+        // 1. 計算賺取的點數 (用 subtotal 原始總額算)
+        const totalEarnedSpent = memberOrders.reduce((sum, o) => sum + Number(o.subtotal || o.total || 0), 0);
+        const totalPointsEarned = Math.floor(totalEarnedSpent / 50);
+        
+        // 2. 減去已經兌換扣除的點數
+        const totalPointsDeducted = memberOrders.reduce((sum, o) => sum + Number(o.pointsDeducted || 0), 0);
+        
+        // 3. 得到目前實際剩餘點數
+        let currentPoints = totalPointsEarned - totalPointsDeducted;
+        if (currentPoints < 0) currentPoints = 0;
 
-                return `
-                    <tr>
-                        <td><strong>${member.name}</strong></td>
-                        <td>${member.phone}</td>
-                        <td>${orderCount} 次</td>
-                        <td style="color:#e76f51; font-weight:bold;">${points} 點</td>
-                        <td>
-                            <button class="btn btn-edit" onclick="editMemberDetails('${member.phone}', '${member.name}')">✏️ 修改資料</button>
-                            <button class="btn btn-danger" onclick="deleteMember('${member.phone}')">🗑 刪除會員檔案</button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
+        return `
+            <tr>
+                <td><strong>${member.name}</strong></td>
+                <td>${member.phone}</td>
+                <td>${orderCount} 次</td>
+                <td style="color:#e76f51; font-weight:bold;">${currentPoints} 點</td>
+                <td>
+                    <button class="btn btn-edit" onclick="editMemberDetails('${member.phone}', '${member.name}')">✏️ 修改資料</button>
+                    <button class="btn btn-danger" onclick="deleteMember('${member.phone}')">🗑 刪除會員檔案</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
 
         function editMemberDetails(oldPhone, currentName) {
             const newName = prompt(`【步驟 1/2】請輸入會員新的姓名：`, currentName);

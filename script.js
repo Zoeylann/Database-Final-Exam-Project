@@ -329,9 +329,11 @@ function changeCartQty(cartId, amount) {
 // ==========================================
 // 💰 會員累積點數即時折抵功能 (防呆安全版)
 // ==========================================
+// 計算目前登入會員擁有的總點數 (雙軌即時同步版)
 function calculateCurrentUserPoints() {
     if (!currentUser) return 0;
     
+    // 1. 撈取「已結案」的歷史紀錄 (HISTORY_KEY)
     const historyData = localStorage.getItem(HISTORY_KEY);
     let history = [];
     try {
@@ -341,11 +343,36 @@ function calculateCurrentUserPoints() {
         history = [];
     }
     
-    // 過濾出與目前會員手機相同的「已封存/已結算」紀錄
-    const memberHistory = history.filter(o => String(o.phone).trim() === String(currentUser.phone).trim());
-    const totalSpent = memberHistory.reduce((sum, o) => sum + Number(o.total || 0), 0);
+    // 2. 撈取「進行中 / 待處理 / 製作中」的即時訂單 (STORAGE_KEY)
+    const activeData = localStorage.getItem(STORAGE_KEY);
+    let activeOrders = [];
+    try {
+        activeOrders = activeData ? JSON.parse(activeData) : [];
+        if (!Array.isArray(activeOrders)) activeOrders = [];
+    } catch(e) {
+        activeOrders = [];
+    }
     
-    return Math.floor(totalSpent / 50); // 每 50 元積 1 點
+    // 3. 過濾出屬於目前登入會員的資料
+    const myHistory = history.filter(o => String(o.phone).trim() === String(currentUser.phone).trim());
+    const myActive = activeOrders.filter(o => String(o.phone).trim() === String(currentUser.phone).trim());
+    
+    // 4. 計算「總共賺到的點數」
+    // 賺取點數來源：已結案歷史訂單 + 進行中訂單 的原始小計 (subtotal)
+    const historyEarned = myHistory.reduce((sum, o) => sum + Number(o.subtotal || o.total || 0), 0);
+    const activeEarned = myActive.reduce((sum, o) => sum + Number(o.subtotal || o.total || 0), 0);
+    const totalPointsEarned = Math.floor((historyEarned + activeEarned) / 50);
+    
+    // 5. 計算「總共被扣除的點數」
+    // 扣除點數來源：已結案歷史訂單扣的 + 進行中訂單扣的 (pointsDeducted)
+    const historyDeducted = myHistory.reduce((sum, o) => sum + Number(o.pointsDeducted || 0), 0);
+    const activeDeducted = myActive.reduce((sum, o) => sum + Number(o.pointsDeducted || 0), 0);
+    const totalPointsDeducted = historyDeducted + activeDeducted;
+    
+    // 6. 最終可用點數 = 總賺取 - 總扣除
+    let finalAvailablePoints = totalPointsEarned - totalPointsDeducted;
+    
+    return finalAvailablePoints < 0 ? 0 : finalAvailablePoints;
 }
 
 function changeDiscountAmount(amount) {
@@ -453,7 +480,7 @@ function sendOrder() {
         items: [...myCart],
         subtotal: totalCartPrice,                 
         discountUsed: currentDiscountRedeemed,    
-        pointsDeducted: currentDiscountRedeemed * 5, 
+        pointsDeducted: currentDiscountRedeemed * 5, // 🔥 確保這行有確實將扣除點數送出 (1元=5點)
         total: finalTotal,                        
         time: new Date().toLocaleTimeString(),
         status: '待處理' 
@@ -467,6 +494,8 @@ function sendOrder() {
     document.getElementById('order-id').innerText = `#${orderNum}`;
     toggleModal('order-modal', true);
 }
+
+
 
 function openOrderStatusModal() {
     const lastOrderId = localStorage.getItem('my_last_order_id');
@@ -516,11 +545,16 @@ function openOrderStatusModal() {
 }
 
 // ✨ 修正：合併唯一的關閉視窗邏輯
+// 修改後的關閉成功彈窗函式：加入強制頁面刷新機制
 function closeModal() {
-    toggleModal('order-modal', false);
-    myCart = [];
-    currentDiscountRedeemed = 0; 
-    renderCart();
+    toggleModal('order-modal', false); // 關閉訂單成功彈窗
+    
+    myCart = [];                      // 清空前端購物車暫存
+    currentDiscountRedeemed = 0;      // 重置點數折抵額度
+    
+    // 🔥【核心修正】送出成功並關閉視窗後，強制重新整理網頁
+    // location.reload() 會重新載入此頁面，完美刷新所有記憶體狀態與最新點數
+    location.reload();
 }
 
 // ==========================================
