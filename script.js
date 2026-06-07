@@ -1,3 +1,6 @@
+// ==========================================
+// 頂部常數與資料宣告
+// ==========================================
 const menuData = [
     { id: 1, name: '美式咖啡', price: 45, desc: '阿拉比卡 香醇最佳選擇', type: 'coffee' },
     { id: 2, name: '拿鐵咖啡', price: 65, desc: '奶香濃郁 完美融合', type: 'latte' },
@@ -13,9 +16,12 @@ let currentModalQty = 1;
 
 let authMode = 'login'; 
 let currentUser = null;
-let currentDiscountRedeemed = 0;
+let currentDiscountRedeemed = 0; // 顧客選擇折抵的實體元數
+let currentCaptcha = '';         // ✨ 修正：補上驗證碼全域變數
 
+// 🔑 核心修正：補齊後台管理與大數據所使用的所有對應 LocalStorage Key
 const STORAGE_KEY = 'coffee_orders_team130';
+const HISTORY_KEY = 'coffee_history_team130'; // ✨ 修正：原本漏了這一行，導致點數計算直接報錯鎖死！
 const MEMBER_KEY = 'coffee_members_team130';
 const SESSION_KEY = 'current_login_user_team130';
 
@@ -30,7 +36,7 @@ function toggleModal(modalId, show) {
 // 會員認證模組（含頂部小字動態渲染）
 // ==========================================
 function generateCaptcha() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 排除容易混淆的 0, O, 1, I
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; 
     let code = '';
     for (let i = 0; i < 4; i++) {
         code += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -40,12 +46,10 @@ function generateCaptcha() {
     if (box) box.innerText = code;
 }
 
-
 function checkLoginSession() {
     const savedUser = localStorage.getItem(SESSION_KEY);
     const badge = document.getElementById('login-small-badge');
     
-    // 每次打開登入視窗就刷新驗證碼
     generateCaptcha();
 
     if (savedUser) {
@@ -63,7 +67,6 @@ function checkLoginSession() {
     }
 }
 
-
 function switchAuthMode() {
     const title = document.getElementById('auth-title');
     const primaryBtn = document.getElementById('btn-auth-primary');
@@ -71,7 +74,6 @@ function switchAuthMode() {
     const switchLink = document.getElementById('auth-switch-link');
     const nameGroup = document.getElementById('auth-name-group');
     
-    // 清空驗證碼與欄位
     document.getElementById('auth-captcha-input').value = '';
     generateCaptcha();
 
@@ -81,18 +83,16 @@ function switchAuthMode() {
         primaryBtn.innerText = '註冊並登入';
         switchText.innerText = '已經是會員？';
         switchLink.innerText = '切換至登入';
-        nameGroup.style.display = 'block'; // 註冊才顯示姓名欄
+        if (nameGroup) nameGroup.style.display = 'block';
     } else {
         authMode = 'login';
         title.innerText = '會員登入';
         primaryBtn.innerText = '登入';
         switchText.innerText = '首次點餐？';
         switchLink.innerText = '註冊新會員';
-        nameGroup.style.display = 'none'; // 登入隱藏姓名欄
+        if (nameGroup) nameGroup.style.display = 'none';
     }
 }
-
-
 
 function handleAuthSubmit() {
     const phone = document.getElementById('auth-phone').value.trim();
@@ -103,7 +103,6 @@ function handleAuthSubmit() {
     if (!phone) { alert('請輸入手機號碼！'); return; }
     if (!password) { alert('請輸入密碼！'); return; }
     
-    // 驗證碼檢查
     if (captchaInput !== currentCaptcha) {
         alert('驗證碼輸入錯誤，請重新輸入！');
         generateCaptcha();
@@ -121,11 +120,10 @@ function handleAuthSubmit() {
             switchAuthMode(); 
             return;
         }
-        // 註冊時儲存加密密碼（這裡用簡單儲存，實務上後端會動態雜湊，但前端仍可確保後台看不到）
         const newMember = { phone, name, password };
         members.push(newMember);
         localStorage.setItem(MEMBER_KEY, JSON.stringify(members));
-        currentUser = { phone, name }; // 記憶體中移除密碼，確保安全
+        currentUser = { phone, name }; 
     } else {
         const user = members.find(m => m.phone === phone);
         if (!user) { alert('找不到此會員檔案，請確認電話是否正確，或切換至註冊！'); return; }
@@ -137,17 +135,12 @@ function handleAuthSubmit() {
     loginSuccess(currentUser);
 }
 
-
-
-
 function handleSmallBadgeClick() {
     if (!currentUser) {
         toggleModal('auth-modal', true);
         generateCaptcha();
     }
 }
-
-
 
 function loginSuccess(user) {
     toggleModal('auth-modal', false);
@@ -159,7 +152,6 @@ function loginSuccess(user) {
     const badge = document.getElementById('login-small-badge');
     if (badge) badge.style.display = "none"; 
     
-    // 登入成功後重新計算購物車與折抵點數
     renderCart();
 }
 
@@ -187,10 +179,11 @@ function logoutUser() {
 }
 
 // ==========================================
-// 點餐與客製化核心（含智慧甜度/冰塊連動邏輯）
+// 點餐與客製化核心
 // ==========================================
 function initMenu() {
     const area = document.getElementById('menu-area');
+    if (!area) return;
     area.innerHTML = menuData.map(item => `
         <div class="product-card">
             <h3>${item.name}</h3>
@@ -225,22 +218,18 @@ function addDessertToCart(product) {
     renderCart();
 }
 
-// 開啟規格客製化彈窗
 function openCustomModal(item) {
     currentSelectedProduct = item;
     currentModalQty = 1;
     document.getElementById('modal-qty-display').innerText = currentModalQty;
     document.getElementById('custom-product-name').innerText = `${item.name} - 客製化規格調整`;
     
-    // 預設將選單重設為「熱」，隱藏冰塊選擇
     document.getElementById('modal-temp-select').value = "熱";
     document.getElementById('ice-group').style.display = "none";
 
-    // 甜度調整核心判定：拿鐵咖啡、卡布奇諾、抹茶拿鐵才開啟甜度
     const isMilky = ['拿鐵咖啡', '卡布奇諾', '抹茶拿鐵'].includes(item.name);
     document.getElementById('sweet-group').style.display = isMilky ? 'block' : 'none';
     
-    // 原物料進階加價判定
     if (item.type === 'coffee') {
         document.getElementById('espresso-group').style.display = 'block';
         document.getElementById('milk-group').style.display = 'none';
@@ -254,7 +243,6 @@ function openCustomModal(item) {
     toggleModal('custom-modal', true);
 }
 
-// 智慧動態連動：當選擇「冰」才顯示冰塊調整；選「熱」自動隱藏
 function onModalTempChange() {
     const tempValue = document.getElementById('modal-temp-select').value;
     const iceGroup = document.getElementById('ice-group');
@@ -276,14 +264,12 @@ function closeCustomModal() {
     currentSelectedProduct = null;
 }
 
-// 組合客製化規格並寫入購物車
 function confirmAddToCart() {
     if (!currentSelectedProduct) return;
 
     const temp = document.getElementById('modal-temp-select').value;
     let customDetails = [];
 
-    // 1. 處理冰塊與溫度字串
     if (temp === "冰") {
         const ice = document.getElementById('modal-ice-select').value;
         customDetails.push(`${temp}(${ice})`);
@@ -291,14 +277,12 @@ function confirmAddToCart() {
         customDetails.push(temp);
     }
 
-    // 2. 處理甜度字串 (只有特定品項需要加入)
     const isMilky = ['拿鐵咖啡', '卡布奇諾', '抹茶拿鐵'].includes(currentSelectedProduct.name);
     if (isMilky) {
         const sweet = document.getElementById('modal-sweet-select').value;
         customDetails.push(sweet);
     }
 
-    // 3. 處理原有咖啡特濃與牛奶調整
     let espresso = "標準";
     if (currentSelectedProduct.type !== 'matcha') {
         espresso = document.querySelector('input[name="espresso-option"]:checked').value;
@@ -342,29 +326,114 @@ function changeCartQty(cartId, amount) {
     renderCart();
 }
 
+// ==========================================
+// 💰 會員累積點數即時折抵功能 (防呆安全版)
+// ==========================================
+function calculateCurrentUserPoints() {
+    if (!currentUser) return 0;
+    
+    const historyData = localStorage.getItem(HISTORY_KEY);
+    let history = [];
+    try {
+        history = historyData ? JSON.parse(historyData) : [];
+        if (!Array.isArray(history)) history = [];
+    } catch(e) {
+        history = [];
+    }
+    
+    // 過濾出與目前會員手機相同的「已封存/已結算」紀錄
+    const memberHistory = history.filter(o => String(o.phone).trim() === String(currentUser.phone).trim());
+    const totalSpent = memberHistory.reduce((sum, o) => sum + Number(o.total || 0), 0);
+    
+    return Math.floor(totalSpent / 50); // 每 50 元積 1 點
+}
+
+function changeDiscountAmount(amount) {
+    const totalCartPrice = myCart.reduce((sum, i) => sum + (i.price * i.quantity), 0);
+    const userPoints = calculateCurrentUserPoints(); // 撈出後台目前的總點數（例如：11點）
+    const maxPossibleDiscount = Math.floor(userPoints / 5); // 算出最大可折抵金額（例如：2元）
+
+    let targetDiscount = currentDiscountRedeemed + amount;
+    
+    // 邊界防禦：不能小於 0、不能超過點數能折的上限、不能把總價扣到變成負數
+    if (targetDiscount < 0) targetDiscount = 0;
+    if (targetDiscount > maxPossibleDiscount) targetDiscount = maxPossibleDiscount;
+    if (targetDiscount > totalCartPrice) targetDiscount = totalCartPrice;
+
+    currentDiscountRedeemed = targetDiscount;
+    
+    // 1. 更新「已折抵金額」數字（畫面上的折抵金額）
+    const discountDisplay = document.getElementById('discount-amount-display');
+    if (discountDisplay) discountDisplay.innerText = currentDiscountRedeemed;
+    
+    // 🔥【核心修正】2. 讓「可用點數」隨著折抵動態扣除並即時顯示
+    // 扣除的點數 = 折抵元數 * 5
+    const remainingPoints = userPoints - (currentDiscountRedeemed * 5);
+    const availPointsEl = document.getElementById('user-available-points');
+    if (availPointsEl) {
+        availPointsEl.innerText = remainingPoints;
+    }
+    
+    // 3. 重新計算並更新右側大字「總計金額」顯示
+    const finalTotal = totalCartPrice - currentDiscountRedeemed;
+    const totalDisplay = document.getElementById('total-price');
+    if (totalDisplay) {
+        totalDisplay.innerText = `NT$ ${finalTotal}`;
+    }
+}
 function renderCart() {
     const list = document.getElementById('cart-list');
     const totalDisplay = document.getElementById('total-price');
     const btn = document.getElementById('btn-submit');
+    const pointSection = document.getElementById('point-redeem-section');
+
+    if (!list) return;
 
     list.innerHTML = myCart.map(i => `
         <div class="cart-item-row" style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #eee;">
             <div>
                 <div style="font-weight:bold;">${i.name}</div>
-                <small style="color:#888;">(${i.customString})</small>
+                <small style="color:#888;">(${i.customString || '固定規格'})</small>
                 <div style="color:#e76f51; font-size:0.85rem; margin-top:2px;">單價: NT$ ${i.price}</div>
             </div>
             <div style="display: flex; align-items: center; gap: 8px;">
-                <button onclick="changeCartQty(${i.cartId}, -1)" class="btn-qty-cart">-</button>
+                <button type="button" onclick="changeCartQty(${i.cartId}, -1)" class="btn-qty-cart">-</button>
                 <span style="font-weight:bold; min-width:15px; text-align:center;">${i.quantity}</span>
-                <button onclick="changeCartQty(${i.cartId}, 1)" class="btn-qty-cart">+</button>
+                <button type="button" onclick="changeCartQty(${i.cartId}, 1)" class="btn-qty-cart">+</button>
             </div>
         </div>
     `).join('');
 
-    const total = myCart.reduce((sum, i) => sum + (i.price * i.quantity), 0);
-    totalDisplay.innerText = `NT$ ${total}`;
-    btn.disabled = (myCart.length === 0 || !currentUser);
+    const totalCartPrice = myCart.reduce((sum, i) => sum + (i.price * i.quantity), 0);
+
+    if (currentUser && myCart.length > 0 && pointSection) {
+        const points = calculateCurrentUserPoints();
+        const maxDiscount = Math.floor(points / 5);
+        
+        pointSection.style.display = 'block';
+        
+        const availPointsEl = document.getElementById('user-available-points');
+        const maxDiscountEl = document.getElementById('user-max-discount');
+        const discountDisplayEl = document.getElementById('discount-amount-display');
+        
+        if (availPointsEl) availPointsEl.innerText = points;
+        if (maxDiscountEl) maxDiscountEl.innerText = maxDiscount;
+        
+        if (currentDiscountRedeemed > totalCartPrice) currentDiscountRedeemed = totalCartPrice;
+        if (currentDiscountRedeemed > maxDiscount) currentDiscountRedeemed = maxDiscount;
+        
+        if (discountDisplayEl) discountDisplayEl.innerText = currentDiscountRedeemed;
+    } else {
+        if (pointSection) pointSection.style.display = 'none';
+        currentDiscountRedeemed = 0;
+    }
+
+    const finalTotal = totalCartPrice - currentDiscountRedeemed;
+    if (totalDisplay) totalDisplay.innerText = `NT$ ${finalTotal}`;
+    
+    if (btn) {
+        btn.disabled = (myCart.length === 0 || !currentUser);
+    }
 }
 
 // ==========================================
@@ -373,13 +442,19 @@ function renderCart() {
 function sendOrder() {
     if (!currentUser) { alert('請先登入會員再提交訂單！'); return; }
 
+    const totalCartPrice = myCart.reduce((sum, i) => sum + (i.price * i.quantity), 0);
+    const finalTotal = totalCartPrice - currentDiscountRedeemed;
     const orderNum = Math.floor(Math.random() * 900) + 100;
+    
     const orderData = {
         id: orderNum,
         name: currentUser.name,
         phone: currentUser.phone,
         items: [...myCart],
-        total: myCart.reduce((sum, i) => sum + (i.price * i.quantity), 0),
+        subtotal: totalCartPrice,                 
+        discountUsed: currentDiscountRedeemed,    
+        pointsDeducted: currentDiscountRedeemed * 5, 
+        total: finalTotal,                        
         time: new Date().toLocaleTimeString(),
         status: '待處理' 
     };
@@ -440,19 +515,20 @@ function openOrderStatusModal() {
     toggleModal('status-tracker-modal', true);
 }
 
+// ✨ 修正：合併唯一的關閉視窗邏輯
 function closeModal() {
     toggleModal('order-modal', false);
     myCart = [];
+    currentDiscountRedeemed = 0; 
     renderCart();
 }
 
 // ==========================================
-// 系統高頻動態更新初始化區
+// 系統初始化區
 // ==========================================
 initMenu();
 checkLoginSession();
 
-// 每 1 秒動態巡檢：若進度彈窗正開啟，立刻重抓後台資料進行高畫質步驟更新
 setInterval(() => {
     const trackerModal = document.getElementById('status-tracker-modal');
     if (trackerModal && trackerModal.style.display === 'flex') {
