@@ -79,24 +79,40 @@
             <h2 id="auth-title" style="margin-top: 0; color: #6f4e37; text-align: center; border-bottom: 2px solid #6f4e37; padding-bottom: 8px;">會員登入</h2>
             
             <div id="auth-form">
-                <div class="custom-group">
-                    <label><strong>帳號 (手機號碼)：</strong></label>
-                    <input type="text" id="auth-phone" placeholder="請輸入手機號碼">
-                </div>
-                <div class="custom-group">
-                    <label><strong>姓名：</strong></label>
-                    <input type="text" id="auth-name" placeholder="請輸入真實姓名">
-                </div>
-                
-                <div style="display: flex; gap: 10px; margin-top: 20px;">
-                    <button id="btn-auth-primary" onclick="handleAuthSubmit()" style="background: #6f4e37;">登入</button>
-                </div>
-                
-                <p style="text-align: center; margin-top: 15px; font-size: 0.9rem; color: #666;">
-                    <span id="auth-switch-text">首次點餐？</span> 
-                    <a href="javascript:void(0)" id="auth-switch-link" onclick="switchAuthMode()" style="color: #e76f51; font-weight: bold; text-decoration: none;">註冊新會員</a>
-                </p>
-            </div>
+    <div class="custom-group">
+        <label><strong>帳號 (手機號碼)：</strong></label>
+        <input type="text" id="auth-phone" placeholder="請輸入手機號碼">
+    </div>
+    <div class="custom-group">
+        <label><strong>密碼：</strong></label>
+        <input type="password" id="auth-password" placeholder="請輸入密碼">
+    </div>
+    <div class="custom-group" id="auth-name-group" style="display: none;">
+        <label><strong>姓名 (僅註冊需要)：</strong></label>
+        <input type="text" id="auth-name" placeholder="請輸入真實姓名">
+    </div>
+    <div class="custom-group">
+        <label><strong>驗證碼：</strong></label>
+        <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
+            <div id="captcha-code-box" style="background: #e76f51; color: white; padding: 8px 15px; font-family: monospace; font-size: 1.2rem; font-weight: bold; letter-spacing: 4px; border-radius: 4px; user-select: none;">ABCD</div>
+            <button type="button" onclick="generateCaptcha()" style="width: auto; padding: 6px 12px; font-size: 0.85rem; background: #95a5a6;">換一張</button>
+        </div>
+        <input type="text" id="auth-captcha-input" placeholder="請輸入上方驗證碼 (不分大小寫)">
+    </div>
+    
+    <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button id="btn-auth-primary" onclick="handleAuthSubmit()" style="background: #6f4e37;">登入</button>
+    </div>
+    
+    <p style="text-align: center; margin-top: 15px; font-size: 0.9rem; color: #666;">
+        <span id="auth-switch-text">首次點餐？</span> 
+        <a href="javascript:void(0)" id="auth-switch-link" onclick="switchAuthMode()" style="color: #e76f51; font-weight: bold; text-decoration: none;">註冊新會員</a>
+    </p>
+</div>
+
+
+
+
         </div>
     </div>
 
@@ -133,6 +149,24 @@
                 <input type="text" id="cust-name" placeholder="姓名 (請先由上方登入)" readonly style="background: #f0f0f0; cursor: not-allowed;">
                 <input type="text" id="cust-phone" placeholder="電話 (請先由上方登入)" readonly style="background: #f0f0f0; cursor: not-allowed;">
             </div>
+
+
+<div id="point-redeem-section" style="margin-top: 15px; background: #fdfbf7; padding: 12px; border-radius: 8px; border: 1px solid #f3ebe1; font-size: 0.9rem; display: none;">
+    <div style="color: #6f4e37; font-weight: bold; margin-bottom: 5px;">儲值點數折抵現金</div>
+    <div>您目前可用點數：<span id="user-available-points" style="color: #e76f51; font-weight: bold;">0</span> 點</div>
+    <div style="font-size: 0.8rem; color: #888; margin-bottom: 8px;">(每 5 點可折抵 NT$ 1 元，最多可折抵 <span id="user-max-discount">0</span> 元)</div>
+    
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <span>折抵金額：NT$</span>
+        <div style="display: inline-flex; align-items: center; gap: 5px;">
+            <button type="button" onclick="changeDiscountAmount(-1)" class="btn-qty" style="width:25px; height:25px;">-</button>
+            <span id="discount-amount-display" style="font-weight: bold; min-width: 30px; text-align: center;">0</span>
+            <button type="button" onclick="changeDiscountAmount(1)" class="btn-qty" style="width:25px; height:25px;">+</button>
+        </div>
+    </div>
+</div>
+
+
 
             <div class="total-section">
                 總計金額: <span id="total-price" style="color: #e76f51;">NT$ 0</span>

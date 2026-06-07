@@ -13,6 +13,7 @@ let currentModalQty = 1;
 
 let authMode = 'login'; 
 let currentUser = null;
+let currentDiscountRedeemed = 0;
 
 const STORAGE_KEY = 'coffee_orders_team130';
 const MEMBER_KEY = 'coffee_members_team130';
@@ -28,18 +29,32 @@ function toggleModal(modalId, show) {
 // ==========================================
 // 會員認證模組（含頂部小字動態渲染）
 // ==========================================
+function generateCaptcha() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 排除容易混淆的 0, O, 1, I
+    let code = '';
+    for (let i = 0; i < 4; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    currentCaptcha = code;
+    const box = document.getElementById('captcha-code-box');
+    if (box) box.innerText = code;
+}
+
+
 function checkLoginSession() {
     const savedUser = localStorage.getItem(SESSION_KEY);
     const badge = document.getElementById('login-small-badge');
     
+    // 每次打開登入視窗就刷新驗證碼
+    generateCaptcha();
+
     if (savedUser) {
         currentUser = JSON.parse(savedUser);
         loginSuccess(currentUser);
     } else {
-        // 未登入時，確保灰色小字正常顯示
         if (badge) {
             badge.innerHTML = `會員登入`;
-            badge.style.display = "inline-block"; // 顯示小字
+            badge.style.display = "inline-block";
             badge.style.color = "#7f8c8d";
             badge.style.textDecoration = "underline";
             badge.style.cursor = "pointer";
@@ -48,60 +63,91 @@ function checkLoginSession() {
     }
 }
 
+
 function switchAuthMode() {
     const title = document.getElementById('auth-title');
     const primaryBtn = document.getElementById('btn-auth-primary');
     const switchText = document.getElementById('auth-switch-text');
     const switchLink = document.getElementById('auth-switch-link');
+    const nameGroup = document.getElementById('auth-name-group');
     
+    // 清空驗證碼與欄位
+    document.getElementById('auth-captcha-input').value = '';
+    generateCaptcha();
+
     if (authMode === 'login') {
         authMode = 'register';
         title.innerText = '註冊新會員';
         primaryBtn.innerText = '註冊並登入';
         switchText.innerText = '已經是會員？';
         switchLink.innerText = '切換至登入';
+        nameGroup.style.display = 'block'; // 註冊才顯示姓名欄
     } else {
         authMode = 'login';
         title.innerText = '會員登入';
         primaryBtn.innerText = '登入';
         switchText.innerText = '首次點餐？';
         switchLink.innerText = '註冊新會員';
+        nameGroup.style.display = 'none'; // 登入隱藏姓名欄
     }
 }
 
+
+
 function handleAuthSubmit() {
     const phone = document.getElementById('auth-phone').value.trim();
+    const password = document.getElementById('auth-password').value.trim();
     const name = document.getElementById('auth-name').value.trim();
+    const captchaInput = document.getElementById('auth-captcha-input').value.trim().toUpperCase();
 
     if (!phone) { alert('請輸入手機號碼！'); return; }
+    if (!password) { alert('請輸入密碼！'); return; }
+    
+    // 驗證碼檢查
+    if (captchaInput !== currentCaptcha) {
+        alert('驗證碼輸入錯誤，請重新輸入！');
+        generateCaptcha();
+        document.getElementById('auth-captcha-input').value = '';
+        return;
+    }
 
     let members = JSON.parse(localStorage.getItem(MEMBER_KEY) || '[]');
 
     if (authMode === 'register') {
         if (!name) { alert('請填寫姓名以完成註冊！'); return; }
         if (members.some(m => m.phone === phone)) {
-            alert('此電話已被註冊，已為您自動切換至登入模式。');
-            authMode = 'register'; switchAuthMode(); return;
+            alert('此電話已被註冊，已為您切換至登入模式。');
+            authMode = 'login'; 
+            switchAuthMode(); 
+            return;
         }
-        const newMember = { phone, name };
+        // 註冊時儲存加密密碼（這裡用簡單儲存，實務上後端會動態雜湊，但前端仍可確保後台看不到）
+        const newMember = { phone, name, password };
         members.push(newMember);
         localStorage.setItem(MEMBER_KEY, JSON.stringify(members));
-        currentUser = newMember;
+        currentUser = { phone, name }; // 記憶體中移除密碼，確保安全
     } else {
         const user = members.find(m => m.phone === phone);
-        if (!user) { alert('找不到此會員檔案，請切換至註冊！'); return; }
-        currentUser = user;
+        if (!user) { alert('找不到此會員檔案，請確認電話是否正確，或切換至註冊！'); return; }
+        if (user.password !== password) { alert('密碼錯誤，請重新輸入！'); generateCaptcha(); return; }
+        currentUser = { phone: user.phone, name: user.name };
     }
 
     localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
     loginSuccess(currentUser);
 }
 
+
+
+
 function handleSmallBadgeClick() {
     if (!currentUser) {
         toggleModal('auth-modal', true);
+        generateCaptcha();
     }
 }
+
+
 
 function loginSuccess(user) {
     toggleModal('auth-modal', false);
@@ -110,11 +156,10 @@ function loginSuccess(user) {
     document.getElementById('cust-name').value = user.name;
     document.getElementById('cust-phone').value = user.phone;
     
-    // ✨ 核心修改：登入成功後，直接讓這行小字徹底消失
     const badge = document.getElementById('login-small-badge');
-    if (badge) {
-        badge.style.display = "none"; 
-    }
+    if (badge) badge.style.display = "none"; 
+    
+    // 登入成功後重新計算購物車與折抵點數
     renderCart();
 }
 
@@ -125,18 +170,20 @@ function logoutUser() {
     document.getElementById('cust-name').value = '';
     document.getElementById('cust-phone').value = '';
     document.getElementById('auth-phone').value = '';
+    document.getElementById('auth-password').value = '';
     document.getElementById('auth-name').value = '';
+    document.getElementById('auth-captcha-input').value = '';
     
-    // ✨ 同步恢復：登出之後，重新把可點擊的灰色 [會員登入] 小字喚醒顯示
     const badge = document.getElementById('login-small-badge');
     if (badge) {
         badge.innerHTML = `會員登入`;
-        badge.style.display = "inline-block"; // 重新顯示
+        badge.style.display = "inline-block";
         badge.style.color = "#7f8c8d";
         badge.style.textDecoration = "underline";
         badge.style.cursor = "pointer";
     }
     toggleModal('auth-modal', true);
+    generateCaptcha();
 }
 
 // ==========================================
