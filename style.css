@@ -4,7 +4,13 @@
 
 body {
     font-family: "Microsoft JhengHei", sans-serif;
-    background-color: #f8f9fa;
+    /* ❌ 刪除原本的 background-color: #f8f9fa; */
+    
+    /* 🎯 改用這段：背景圖 + 磨砂玻璃視覺遮罩 */
+    background: linear-gradient(rgba(248, 249, 250, 0.8), rgba(248, 249, 250, 0.8)), url('咖啡廳.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed; /* 固定背景，捲動時不跟著跑 */
     margin: 0;
     padding: 20px;
 }
