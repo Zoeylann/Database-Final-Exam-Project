@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>校園快閃咖啡館 - 點餐系統</title>
+    <link rel="stylesheet" href="style.css">
+
+
+
+    <style>
+        /* 補上進度條與客製化面板的專屬美化樣式 */
+        .tracker-steps {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            margin: 30px 0 20px 0;
+            padding: 0 10px;
+        }
+        .tracker-steps::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 40px;
+            right: 40px;
+            height: 4px;
+            background-color: #e0e0e0;
+            z-index: 1;
+        }
+        .step {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            flex: 1;
+            font-size: 0.9rem;
+            color: #999;
+            font-weight: bold;
+            transition: all 0.4s ease;
+        }
+        .step div {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #e0e0e0;
+            color: #666;
+            line-height: 40px;
+            text-align: center;
+            margin: 0 auto 10px auto;
+            font-size: 1.1rem;
+            font-weight: bold;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            transition: all 0.4s ease;
+        }
+        .step.step-active { color: #e76f51; }
+        .step.step-active div {
+            background-color: #e76f51;
+            color: white;
+            transform: scale(1.15);
+            box-shadow: 0 4px 10px rgba(231, 111, 81, 0.35);
+        }
+        
+        /* 飲品規格下拉選單樣式 */
+        .custom-select-box {
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            font-size: 0.9rem;
+            color: #444;
+            background-color: #fff;
+            outline: none;
+        }
+        .custom-select-box:focus { border-color: #6f4e37; }
+    </style>
+</head>
+<body>
+    <div id="auth-modal" class="modal">
+        <div class="modal-content text-left" style="position: relative;">
+            <span class="modal-close-x" onclick="toggleModal('auth-modal', false)">✖</span>
+            <h2 id="auth-title" style="margin-top: 0; color: #6f4e37; text-align: center; border-bottom: 2px solid #6f4e37; padding-bottom: 8px;">會員登入</h2>
+            
+            <div id="auth-form">
+                <div class="custom-group">
+                    <label><strong>帳號 (手機號碼)：</strong></label>
+                    <input type="text" id="auth-phone" placeholder="請輸入手機號碼">
+                </div>
+                <div class="custom-group">
+                    <label><strong>姓名：</strong></label>
+                    <input type="text" id="auth-name" placeholder="請輸入真實姓名">
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button id="btn-auth-primary" onclick="handleAuthSubmit()" style="background: #6f4e37;">登入</button>
+                </div>
+                
+                <p style="text-align: center; margin-top: 15px; font-size: 0.9rem; color: #666;">
+                    <span id="auth-switch-text">首次點餐？</span> 
+                    <a href="javascript:void(0)" id="auth-switch-link" onclick="switchAuthMode()" style="color: #e76f51; font-weight: bold; text-decoration: none;">註冊新會員</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <header>
+        <h1>校園快閃咖啡館</h1>
+        
+  
+        <div style="margin-top: 15px; display: flex; justify-content: center; gap: 12px;">
+            <button onclick="openOrderStatusModal()" style="width: auto; background-color: #e76f51; padding: 8px 16px;">🔍 追蹤我的訂單進度</button>
+            <button onclick="toggleModal('faq-modal', true)" style="width: auto; background-color: #2c3e50; padding: 8px 16px;">💡 商品原物料溯源 / 常見問題</button>
+        </div>
+
+	<div style="margin-top: 10px; text-align: center;">
+    <span id="login-small-badge" onclick="handleSmallBadgeClick()" style="font-size: 0.9rem; color: #7f8c8d; cursor: pointer; text-decoration: underline; font-weight: 500; transition: 0.2s;">
+        [會員登入]
+    </span>
+</div>
+
+        <div id="current-user-badge" style="margin-top: 15px; font-weight: bold; color: #6f4e37; display: none;">
+            歡迎回來，<span id="user-display-name"></span>！ 
+            <button onclick="logoutUser()" style="width: auto; padding: 2px 8px; font-size: 0.8rem; background: #95a5a6; margin-left: 10px;">切換帳號</button>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <div id="menu-area" class="menu-grid"></div>
+
+        <div class="cart-sidebar">
+            <h2>購物車</h2>
+            <p>即時更新您的訂單</p>
+            <div id="cart-list" class="cart-items-container"></div>
+            
+            <div class="user-inputs" style="margin-top: 20px;">
+                <input type="text" id="cust-name" placeholder="姓名 (請先由上方登入)" readonly style="background: #f0f0f0; cursor: not-allowed;">
+                <input type="text" id="cust-phone" placeholder="電話 (請先由上方登入)" readonly style="background: #f0f0f0; cursor: not-allowed;">
+            </div>
+
+            <div class="total-section">
+                總計金額: <span id="total-price" style="color: #e76f51;">NT$ 0</span>
+            </div>
+            <button id="btn-submit" disabled onclick="sendOrder()">提交訂單</button>
+        </div>
+    </div>
+
+    <div id="custom-modal" class="modal">
+        <div class="modal-content text-left">
+            <h3 id="custom-product-name" style="margin-top: 0; color: #6f4e37; border-bottom: 2px solid #6f4e37; padding-bottom: 8px;">規格客製化</h3>
+            
+            <div class="custom-group" id="temp-group">
+                <label><strong>溫度調整：</strong></label>
+                <select id="modal-temp-select" class="custom-select-box" onchange="onModalTempChange()">
+                    <option value="熱">熱 (Hot)</option>
+                    <option value="冰">冰 (Ice)</option>
+                </select>
+            </div>
+
+            <div class="custom-group" id="ice-group" style="display: none;">
+                <label><strong>冰塊量：</strong></label>
+                <select id="modal-ice-select" class="custom-select-box">
+                    <option value="正常冰">正常冰</option>
+                    <option value="少冰">少冰</option>
+                    <option value="微冰">微冰</option>
+                    <option value="去冰">去冰</option>
+                </select>
+            </div>
+
+            <div class="custom-group" id="sweet-group" style="display: none;">
+                <label><strong>甜度調整：</strong></label>
+                <select id="modal-sweet-select" class="custom-select-box">
+                    <option value="正常糖">正常糖</option>
+                    <option value="7分糖">7分糖</option>
+                    <option value="半糖">半糖</option>
+                    <option value="3分糖">3分糖</option>
+                    <option value="無糖">無糖</option>
+                </select>
+            </div>
+
+            <div class="custom-group" id="espresso-group" style="display: none;">
+                <label><strong>咖啡濃縮度：</strong></label>
+                <div class="radio-options">
+                    <label><input type="radio" name="espresso-option" value="標準" checked> 標準</label>
+                    <label><input type="radio" name="espresso-option" value="特濃"> 特濃 (+NT$ 15)</label>
+                </div>
+            </div>
+
+            <div class="custom-group" id="milk-group" style="display: none;">
+                <label><strong>牛奶類別：</strong></label>
+                <div class="radio-options">
+                    <label><input type="radio" name="milk-option" value="全脂鮮乳" checked> 全脂鮮乳</label>
+                    <label><input type="radio" name="milk-option" value="燕麥奶"> 燕麥奶 (+NT$ 20)</label>
+                </div>
+            </div>
+
+            <div class="custom-group" style="display: flex; justify-content: space-between; align-items: center;">
+                <label style="margin: 0;"><strong>數量：</strong></label>
+                <div class="quantity-control">
+                    <button onclick="changeModalQty(-1)" class="btn-qty">-</button>
+                    <span id="modal-qty-display" style="font-weight: bold; margin: 0 10px;">1</span>
+                    <button onclick="changeModalQty(1)" class="btn-qty">+</button>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button onclick="closeCustomModal()" style="background: #95a5a6;">返回選單</button>
+                <button onclick="confirmAddToCart()" style="background: #27ae60;">確認加入</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="status-tracker-modal" class="modal">
+        <div class="modal-content text-left">
+            <h3 style="margin-top: 0; color: #6f4e37; border-bottom: 2px solid #6f4e37; padding-bottom: 8px;">📋 我的訂單即時進度</h3>
+            <div id="tracker-container" style="margin: 15px 0;"></div>
+            <button onclick="toggleModal('status-tracker-modal', false)" style="background: #95a5a6; margin-top: 10px;">關閉視窗</button>
+        </div>
+    </div>
+
+    <div id="faq-modal" class="modal">
+        <div class="modal-content text-left" style="width: 460px; max-height: 80vh; overflow-y: auto;">
+            <h3 style="margin-top: 0; color: #6f4e37; border-bottom: 2px solid #6f4e37; padding-bottom: 8px;">💡 商品原物料溯源與常見問題</h3>
+            <div class="custom-group">
+                <p><strong>Q1: 咖啡豆的來源地與烘焙度是什麼？</strong></p>
+                <span style="font-size: 0.9rem; color: #555; display: block; line-height: 1.5;">
+                    本快閃店全品項採用 <strong>100% 阿拉比卡咖啡豆</strong>，產地來自衣索比亞及哥倫比亞。烘焙度採取中度烘焙，完美展現堅果與淡淡柑橘果香風味。
+                </span>
+            </div>
+            <div class="custom-group">
+                <p><strong>Q2: 牛奶類別使用的是哪一牌鮮乳？</strong></p>
+                <span style="font-size: 0.9rem; color: #555; display: block; line-height: 1.5;">
+                    【全脂鮮乳】選用台灣在地優質「<strong>鮮乳坊</strong>」100% 純鮮乳，無添加物。<br>
+                    【燕麥奶】加價選用國際咖啡師專用「<strong>OATLY 燕麥奶</strong>」，口感醇厚，適合全素食者。
+                </span>
+            </div>
+            <div class="custom-group">
+                <p><strong>Q3: 甜點是現做的嗎？內含什麼原物料？</strong></p>
+                <span style="font-size: 0.9rem; color: #555; display: block; line-height: 1.5;">
+                    【起司蛋糕】採用紐西蘭進口乳酪、法國發酵奶油及新鮮雞蛋手工減糖製作。<br>
+                    【巧克力餅乾】採用比利時 <strong>70% 苦甜巧克力豆</strong> 現烤製成，外酥內軟。
+                </span>
+            </div>
+            <button onclick="toggleModal('faq-modal', false)" style="background: #2c3e50; margin-top: 10px;">明白了</button>
+        </div>
+    </div>
+
+    <div id="order-modal" class="modal">
+        <div class="modal-content">
+            <div style="font-size: 50px; color: #27ae60;">✔</div>
+            <h2 style="color: #27ae60;">訂單送出成功！</h2>
+            <p>您的訂單已成功建立，請前往櫃檯結帳並等候叫號</p>
+            <p>您的取餐號碼</p>
+            <h1 id="order-id" style="font-size: 4rem; color: #e76f51; margin: 15px 0;">#000</h1>
+            <div style="background: #fdf2f2; padding: 15px; border-radius: 8px; text-align: left;">
+                <strong>取餐須知：</strong>
+                <ul style="padding-left: 20px; font-size: 0.9rem;">
+                    <li>請保存好您的取餐號碼</li>
+                    <li>當號碼被叫到時，請出示此畫面</li>
+                    <li>預估等候時間：10-15分鐘</li>
+                </ul>
+            </div>
+            <button onclick="closeModal()" style="margin-top: 20px; background: #27ae60;">繼續點餐</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
