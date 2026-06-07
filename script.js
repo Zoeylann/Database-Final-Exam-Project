@@ -569,3 +569,91 @@ setInterval(() => {
         openOrderStatusModal();
     }
 }, 1000);
+
+
+// ==========================================
+// 🧠 AI 智慧客服 (高階語意模糊匹配知識庫引擎)
+// ==========================================
+
+// 快捷發問功能
+function quickAsk(text) {
+    const inputEl = document.getElementById('ai-user-input');
+    if (inputEl) {
+        inputEl.value = text;
+        sendAiMessage();
+    }
+}
+
+async function sendAiMessage() {
+    const inputEl = document.getElementById('ai-user-input');
+    if (!inputEl) return;
+    
+    const question = inputEl.value.trim();
+    if (!question) return;
+
+    const chatFlow = document.getElementById('ai-chat-flow');
+    if (!chatFlow) return;
+
+    // 1. 渲染顧客發言
+    chatFlow.innerHTML += `
+        <div style="margin-bottom: 10px; text-align: right;">
+            <span style="background: #e0e0e0; color: #333; padding: 6px 12px; border-radius: 12px 12px 0 12px; display: inline-block; max-width: 85%; text-align: left;">
+                ${question}
+            </span>
+        </div>`;
+    
+    inputEl.value = ''; 
+    chatFlow.scrollTop = chatFlow.scrollHeight;
+
+    // 2. 仿真 AI 思考中動態特效 (完美的 0.6 秒延遲)
+    const tempAiId = 'ai-typing-' + Date.now();
+    chatFlow.innerHTML += `
+        <div id="${tempAiId}" style="margin-bottom: 10px; text-align: left;">
+            <span style="background: #6f4e37; color: white; padding: 6px 12px; border-radius: 12px 12px 12px 0; display: inline-block; max-width: 85%; font-size:0.85rem; opacity: 0.8;">
+                🤖 店小二正在組織語言中...
+            </span>
+        </div>`;
+    chatFlow.scrollTop = chatFlow.scrollHeight;
+
+    // 3. 執行智慧模糊比對機制
+    setTimeout(() => {
+        const typingEl = document.getElementById(tempAiId);
+        if (typingEl) typingEl.remove();
+
+        let aiReply = "";
+        const q = question.toLowerCase();
+
+        // 🧠 深度咖啡廳語意特徵庫
+        if (q.includes('時間') || q.includes('幾點') || q.includes('營業') || q.includes('何時') || q.includes('開到幾點') || q.includes('禮拜') || q.includes('週末')) {
+            aiReply = `🕒 <b>【營業時間與資訊】</b><br>本校園快閃咖啡館於 <b>每週一至週五 09:00 - 17:00</b> 有限期營運！中午時段照常營業，歡迎下課或午休時間隨時來補充咖啡因唷！`;
+        } 
+        else if (q.includes('豆') || q.includes('阿拉比卡') || q.includes('烘焙') || q.includes('產地') || q.includes('苦') || q.includes('酸') || q.includes('非洲') || q.includes('美洲')) {
+            aiReply = `☕ <b>【100% 阿拉比卡豆選用】</b><br>我們全品項咖啡皆選用來自 <b>衣索比亞與哥倫比亞</b> 的精品級阿拉比卡豆。採取精準的中度烘焙，完美展現迷人的堅果香氣與淡淡的柑橘果香風味，口感滑順不苦澀！`;
+        } 
+        else if (q.includes('奶') || q.includes('鮮乳') || q.includes('燕麥') || q.includes('牌子') || q.includes('來源') || q.includes('全脂') || q.includes('oatly') || q.includes('素')) {
+            aiReply = `🥛 <b>【優質乳品安心溯源】</b><br>• <b>全脂鮮乳</b>：全規格選用台灣在地優質「<b>鮮乳坊</b>」100% 純鮮乳，無任何化學添加物。<br>• <b>燕麥奶</b>：加價 20 元即可升級為國際咖啡師御用「<b>OATLY 燕麥奶</b>」，口感醇厚，非常適合全素食與乳糖不耐症的朋友！`;
+        } 
+        else if (q.includes('點心') || q.includes('蛋糕') || q.includes('餅乾') || q.includes('巧克力') || q.includes('起司') || q.includes('手工') || q.includes('現烤')) {
+            aiReply = `🍰 <b>【手工午茶甜點製程】</b><br>• <b>起司蛋糕</b>：採用紐西蘭進口乳酪、法國發酵奶油及新鮮雞蛋，職人手工減糖製作，入口即化！<br>• <b>巧克力餅乾</b>：高成本添加比利時 <b>70% 苦甜巧克力豆</b> 每日現烤，外酥內軟，濃郁爆漿！`;
+        } 
+        else if (q.includes('推薦') || q.includes('招牌') || q.includes('喝什麼') || q.includes('配什麼') || q.includes('好喝') || q.includes('明星商品') || q.includes('第一名')) {
+            aiReply = `👍 <b>【店長心血推薦清單】</b><br>• <b>熱銷拿鐵咖啡</b>：搭配鮮乳坊的滑順奶泡，是本店雷打不動的當日銷售冠軍！<br>• <b>抹茶拿鐵 (冰)</b>：漂亮的日式微苦茶香漸層，視覺與味覺的雙重饗宴！<br>• <b>超值午茶絕配</b>：點一杯美式咖啡，配上一片現烤<b>巧克力餅乾</b>，苦甜融合恰到好處！`;
+        } 
+        else if (q.includes('點數') || q.includes('折抵') || q.includes('兌換') || q.includes('點') || q.includes('回饋')) {
+            aiReply = `💰 <b>【會員點數好康福利】</b><br>只要登入會員點餐，消費滿 50 元即可累積 1 點！在下次結帳時，您可以自由選擇進行點數折抵，<b>每 5 點可以直接折抵 NT$ 1 元現金</b> 唷！`;
+        } 
+        else {
+            // 🚫 核心防禦機制：如果問到無關咖啡廳的事情（例如寫網頁、政治、天氣），傲嬌回絕！
+            aiReply = `開小差如果被店長抓到，店小二可是會被扣薪水的！😭<br><br>身為稱職的專屬 AI 助理，我只能回答與本快閃店<b>「餐點推薦、原物料來源、營業時間、點數折抵」</b>相關的問題唷！請問今天想來杯香醇的咖啡嗎？`;
+        }
+
+        // 4. 渲染回應
+        chatFlow.innerHTML += `
+            <div style="margin-bottom: 10px; text-align: left;">
+                <span style="background: #6f4e37; color: white; padding: 8px 14px; border-radius: 12px 12px 12px 0; display: inline-block; max-width: 85%; line-height: 1.4;">
+                    ${aiReply}
+                </span>
+            </div>`;
+        chatFlow.scrollTop = chatFlow.scrollHeight;
+    }, 600);
+}

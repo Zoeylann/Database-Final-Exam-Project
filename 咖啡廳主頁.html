@@ -122,7 +122,7 @@
   
         <div style="margin-top: 15px; display: flex; justify-content: center; gap: 12px;">
             <button onclick="openOrderStatusModal()" style="width: auto; background-color: #e76f51; padding: 8px 16px;">🔍 追蹤我的訂單進度</button>
-            <button onclick="toggleModal('faq-modal', true)" style="width: auto; background-color: #2c3e50; padding: 8px 16px;">💡 商品原物料溯源 / 常見問題</button>
+            <button onclick="toggleModal('faq-modal', true)" style="width: auto; background-color: #2c3e50; padding: 8px 16px;">快閃咖啡廳的 AI 智能助理</button>
         </div>
 
 	<div style="margin-top: 10px; text-align: center;">
@@ -249,31 +249,43 @@
     </div>
 
     <div id="faq-modal" class="modal">
-        <div class="modal-content text-left" style="width: 460px; max-height: 80vh; overflow-y: auto;">
-            <h3 style="margin-top: 0; color: #6f4e37; border-bottom: 2px solid #6f4e37; padding-bottom: 8px;">💡 商品原物料溯源與常見問題</h3>
-            <div class="custom-group">
-                <p><strong>Q1: 咖啡豆的來源地與烘焙度是什麼？</strong></p>
-                <span style="font-size: 0.9rem; color: #555; display: block; line-height: 1.5;">
-                    本快閃店全品項採用 <strong>100% 阿拉比卡咖啡豆</strong>，產地來自衣索比亞及哥倫比亞。烘焙度採取中度烘焙，完美展現堅果與淡淡柑橘果香風味。
+    <div class="modal-content text-left" style="width: 480px; max-height: 85vh; display: flex; flex-direction: column; padding: 20px;">
+        <h3 style="margin-top: 0; color: #6f4e37; border-bottom: 2px solid #6f4e37; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <span>🤖 咖啡快閃店 - AI 智慧客服</span>
+            <span style="font-size: 0.8rem; color: #e76f51; background: #fdf2f2; padding: 2px 8px; border-radius: 4px;">咖啡限定</span>
+        </h3>
+        
+        <div id="ai-chat-flow" style="flex-grow: 1; min-height: 300px; max-height: 380px; overflow-y: auto; background: #faf8f5; border: 1px solid #f3ebe1; border-radius: 8px; padding: 12px; margin-bottom: 12px; font-size: 0.95rem;">
+            <div style="margin-bottom: 10px; text-align: left;">
+                <span style="background: #e76f51; color: white; padding: 6px 12px; border-radius: 12px 12px 12px 0; display: inline-block; max-width: 85%; line-height: 1.4;">
+                    嗨！我是這間快閃咖啡廳的 AI 智能助理 ☕<br>
+                    您可以直接輸入問題，或點選下方快捷發問：<br>
+                    ✨ <strong>原物料溯源</strong> (如：鮮奶品牌、咖啡豆產地)<br>
+                    🕒 <strong>營業時間與位置</strong><br>
+                    👍 <strong>推薦招牌商品</strong>
                 </span>
             </div>
-            <div class="custom-group">
-                <p><strong>Q2: 牛奶類別使用的是哪一牌鮮乳？</strong></p>
-                <span style="font-size: 0.9rem; color: #555; display: block; line-height: 1.5;">
-                    【全脂鮮乳】選用台灣在地優質「<strong>鮮乳坊</strong>」100% 純鮮乳，無添加物。<br>
-                    【燕麥奶】加價選用國際咖啡師專用「<strong>OATLY 燕麥奶</strong>」，口感醇厚，適合全素食者。
-                </span>
-            </div>
-            <div class="custom-group">
-                <p><strong>Q3: 甜點是現做的嗎？內含什麼原物料？</strong></p>
-                <span style="font-size: 0.9rem; color: #555; display: block; line-height: 1.5;">
-                    【起司蛋糕】採用紐西蘭進口乳酪、法國發酵奶油及新鮮雞蛋手工減糖製作。<br>
-                    【巧克力餅乾】採用比利時 <strong>70% 苦甜巧克力豆</strong> 現烤製成，外酥內軟。
-                </span>
-            </div>
-            <button onclick="toggleModal('faq-modal', false)" style="background: #2c3e50; margin-top: 10px;">明白了</button>
         </div>
+
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px;">
+            <button type="button" onclick="quickAsk('你們營業時間到幾點？')" style="width:auto; font-size:0.75rem; background:#f5ebe0; color:#6f4e37; padding:4px 10px; border:1px solid #6f4e37;">🕒 營業時間</button>
+            <button type="button" onclick="quickAsk('咖啡豆是哪裡的？')" style="width:auto; font-size:0.75rem; background:#f5ebe0; color:#6f4e37; padding:4px 10px; border:1px solid #6f4e37;">☕ 咖啡豆來源</button>
+            <button type="button" onclick="quickAsk('推薦什麼招牌點心或飲料？')" style="width:auto; font-size:0.75rem; background:#f5ebe0; color:#6f4e37; padding:4px 10px; border:1px solid #6f4e37;">👍 推薦什麼</button>
+            <button type="button" onclick="quickAsk('鮮奶是用哪一牌的？')" style="width:auto; font-size:0.75rem; background:#f5ebe0; color:#6f4e37; padding:4px 10px; border:1px solid #6f4e37;">🥛 鮮奶品牌</button>
+        </div>
+
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <input type="text" id="ai-user-input" placeholder="請輸入您想詢問的問題..." style="margin-bottom: 0; flex-grow: 1;" onkeypress="if(event.keyCode==13) sendAiMessage()">
+            <button type="button" onclick="sendAiMessage()" style="width: auto; background: #6f4e37; padding: 10px 18px;">發送</button>
+        </div>
+        
+        <button type="button" onclick="toggleModal('faq-modal', false)" style="background: #2c3e50; margin-top: 12px; padding: 8px;">結束對話</button>
     </div>
+</div>
+
+
+
+
 
     <div id="order-modal" class="modal">
         <div class="modal-content">
