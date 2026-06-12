@@ -20,10 +20,10 @@ let currentDiscountRedeemed = 0; // 顧客選擇折抵的實體元數
 let currentCaptcha = '';         // ✨ 修正：補上驗證碼全域變數
 
 // 🔑 核心修正：補齊後台管理與大數據所使用的所有對應 LocalStorage Key
-const STORAGE_KEY = 'coffee_orders_team130';
-const HISTORY_KEY = 'coffee_history_team130'; // ✨ 修正：原本漏了這一行，導致點數計算直接報錯鎖死！
-const MEMBER_KEY = 'coffee_members_team130';
-const SESSION_KEY = 'current_login_user_team130';
+const STORAGE_KEY = 'coffee_orders_team2';
+const HISTORY_KEY = 'coffee_history_team2'; // ✨ 修正：原本漏了這一行，導致點數計算直接報錯鎖死！
+const MEMBER_KEY = 'coffee_members_team2';
+const SESSION_KEY = 'current_login_user_team2';
 
 function toggleModal(modalId, show) {
     const targetModal = document.getElementById(modalId);
